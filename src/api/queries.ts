@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchMyVisits, fetchPublicPg, fetchVisitInbox } from './endpoints';
+import { fetchBanners, fetchMyVisits, fetchPublicPg, fetchVisitInbox } from './endpoints';
 import { USE_FIXTURES } from './config';
 import { fixturePgs } from '@/lib/fixtures';
+import { fixtureBanners, type BannerSlide } from '@/lib/banners';
 import type { PgSearchParams, PgSummary } from './types';
 
 export const queryKeys = {
@@ -9,6 +10,7 @@ export const queryKeys = {
   pgDetail: (pgCode: string) => ['pg', 'detail', pgCode] as const,
   myVisits: () => ['visits', 'mine'] as const,
   visitInbox: () => ['visits', 'inbox'] as const,
+  banners: () => ['banners'] as const,
 };
 
 /**
@@ -75,4 +77,23 @@ export function useMyVisits(enabled: boolean) {
 
 export function useVisitInbox(enabled: boolean) {
   return useQuery({ queryKey: queryKeys.visitInbox(), queryFn: () => fetchVisitInbox(), enabled });
+}
+
+/**
+ * Hero banners. Backend-driven by design: the fixture stands in only until
+ * GET /v1/banners exists. Cached for a while — slides change on a marketing
+ * cadence, not a scroll cadence.
+ */
+export function useBanners() {
+  return useQuery({
+    queryKey: queryKeys.banners(),
+    queryFn: async (): Promise<BannerSlide[]> => {
+      if (USE_FIXTURES) {
+        return fixtureBanners;
+      }
+      const slides = await fetchBanners();
+      return [...slides].sort((a, b) => a.sortOrder - b.sortOrder);
+    },
+    staleTime: 5 * 60_000,
+  });
 }

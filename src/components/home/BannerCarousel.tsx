@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -10,7 +10,11 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BannerTexture } from './BannerTexture';
+import { Text } from '@/components/common/Text';
+import { HEADER_ROW_HEIGHT } from '@/components/common/Header';
+import { canRenderShadows } from '@/lib/device-tier';
 import type { BannerSlide } from '@/lib/banners';
 import { useTheme } from '@/theme';
 
@@ -130,33 +134,86 @@ interface SlideProps {
 }
 
 function Slide({ slide, index, width, height, scrollX, onPress }: SlideProps) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const range = [(index - 1) * width, index * width, (index + 1) * width];
 
-  // The texture is drawn half again as wide as the slide and drifts against
-  // the swipe, so the pattern moves at a different rate from the page edge.
+  // Three layers at three rates against the swipe — texture furthest, copy
+  // nearer, the image card nearest — which is what makes the slide feel deep.
   const driftStyle = useAnimatedStyle(() => ({
     transform: [
-      {
-        translateX: interpolate(
-          scrollX.value,
-          range,
-          [-width * 0.25, 0, width * 0.25],
-          Extrapolation.CLAMP,
-        ),
-      },
+      { translateX: interpolate(scrollX.value, range, [-width * 0.25, 0, width * 0.25], Extrapolation.CLAMP) },
     ],
   }));
 
+  const copyStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollX.value, range, [0, 1, 0], Extrapolation.CLAMP),
+    transform: [
+      { translateX: interpolate(scrollX.value, range, [width * 0.1, 0, -width * 0.1], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const imageStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollX.value, range, [0, 1, 0], Extrapolation.CLAMP),
+    transform: [
+      { translateX: interpolate(scrollX.value, range, [width * 0.18, 0, -width * 0.18], Extrapolation.CLAMP) },
+      { rotate: '-6deg' },
+    ],
+  }));
+
+  // Copy and image sit in the band between the header row and the dots.
+  const bodyTop = insets.top + HEADER_ROW_HEIGHT;
+  const bottomClear = theme.radii.card + theme.spacing.xxxl;
+  const imageWidth = Math.round(width * 0.36);
+  const imageHeight = Math.round((height - bodyTop - bottomClear) * 0.92);
+  const copyMaxWidth = slide.imageUrl
+    ? width - imageWidth - theme.spacing.xl * 3
+    : width - theme.spacing.xl * 2;
+
   return (
     <Pressable
-      accessibilityRole="image"
-      accessibilityLabel="Pzee"
+      accessibilityRole="button"
+      accessibilityLabel={slide.title || 'Pzee'}
       onPress={() => onPress?.(slide)}
       style={[styles.slide, { width, height }]}
     >
       <Animated.View style={[styles.surface, { width: width * 1.5, left: -width * 0.25, height }, driftStyle]}>
         <BannerTexture texture={slide.texture} colors={slide.colors} width={width * 1.5} height={height} />
       </Animated.View>
+
+      {slide.imageUrl ? (
+        <Animated.View
+          style={[
+            styles.imageCard,
+            {
+              right: theme.spacing.xl,
+              bottom: bottomClear,
+              width: imageWidth,
+              height: imageHeight,
+              borderRadius: theme.radii.xl,
+            },
+            canRenderShadows ? theme.shadows.card : null,
+            imageStyle,
+          ]}
+        >
+          <Image source={{ uri: slide.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        </Animated.View>
+      ) : null}
+
+      {slide.title ? (
+        <Animated.View
+          style={[styles.copy, { left: theme.spacing.xl, bottom: bottomClear, maxWidth: copyMaxWidth }, copyStyle]}
+        >
+          <Text variant="title2" style={styles.white} numberOfLines={2}>
+            {slide.title}
+          </Text>
+          {slide.subtitle ? (
+            <Text variant="callout" style={styles.whiteMuted} numberOfLines={2}>
+              {slide.subtitle}
+            </Text>
+          ) : null}
+        </Animated.View>
+      ) : null}
     </Pressable>
   );
 }
@@ -175,6 +232,16 @@ function Dot({ index, width, scrollX }: { index: number; width: number; scrollX:
 const styles = StyleSheet.create({
   slide: { overflow: 'hidden' },
   surface: { position: 'absolute', top: 0 },
+  imageCard: {
+    position: 'absolute',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  copy: { position: 'absolute' },
+  white: { color: '#FFFFFF' },
+  whiteMuted: { color: 'rgba(255, 255, 255, 0.82)', marginTop: 4 },
   dots: {
     position: 'absolute',
     left: 0,

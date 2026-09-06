@@ -7,6 +7,7 @@ import type {
   VisitRequest,
   VisitStatus,
 } from './types';
+import type { BannerSlide } from '@/lib/banners';
 
 /* ---------------------------------------------------------------- auth ---- */
 
@@ -53,4 +54,11 @@ export function updateVisitStatus(id: string, status: VisitStatus): Promise<Visi
     method: 'PATCH',
     body: { status },
   });
+}
+
+/* ------------------------------------------------------------- banners ---- */
+
+/** Not built on the API yet; see src/lib/banners.ts for the expected shape. */
+export function fetchBanners(): Promise<BannerSlide[]> {
+  return apiData<BannerSlide[]>('/v1/banners');
 }

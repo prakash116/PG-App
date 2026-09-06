@@ -26,9 +26,9 @@ import { StateView } from '@/components/common/StateView';
 import { Text } from '@/components/common/Text';
 import { PgCard, PgCardSkeleton } from '@/components/pg/PgCard';
 import { BannerCarousel } from '@/components/home/BannerCarousel';
-import { usePgSearch } from '@/api/queries';
+import { useBanners, usePgSearch } from '@/api/queries';
 import { USE_FIXTURES } from '@/api/config';
-import { bannerSlides } from '@/lib/banners';
+import { fallbackBanners } from '@/lib/banners';
 import { useLocation } from '@/store/location';
 import { canRenderShadows, tierDuration } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
@@ -40,7 +40,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 /** Banner height below the status bar. The total adds the inset back on.
  *  Shorter than a hero with copy would be: it carries no message, so past a
  *  point more height is just distance between the header and the first card. */
-const BANNER_BODY = 220;
+const BANNER_BODY = 280;
 
 export function DiscoverScreen() {
   const theme = useTheme();
@@ -65,6 +65,9 @@ export function DiscoverScreen() {
     [city, rawQuery],
   );
   const { data, isLoading, isRefetching, refetch, error } = usePgSearch(params);
+  // Banners are backend content. Until they arrive — or if they never do —
+  // the header still needs brand ground under it, hence the fallback.
+  const { data: banners } = useBanners();
 
   // FlashList wraps the onScroll prop in a plain function call before it
   // reaches the scroll view, so a Reanimated worklet handler cannot go here —
@@ -147,7 +150,7 @@ export function DiscoverScreen() {
   const listHeader = (
     <View>
       <BannerCarousel
-        slides={bannerSlides}
+        slides={banners ?? fallbackBanners}
         height={bannerHeight}
         scrollY={scrollY}
         onSlidePress={onSlidePress}
