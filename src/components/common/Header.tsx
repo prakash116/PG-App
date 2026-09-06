@@ -31,6 +31,12 @@ interface HeaderProps {
    * edge-to-edge at rest and the header still reads over a list further down.
    */
   scrollY?: SharedValue<number>;
+  /**
+   * Always paint the background. Only the home screen has a banner to be
+   * transparent over; everywhere else a see-through header just floats
+   * controls over plain ground, which reads as unfinished.
+   */
+  solid?: boolean;
 }
 
 /** The row itself, excluding the status bar inset. */
@@ -68,11 +74,15 @@ export function Header({
   onNotificationsPress,
   isSearchOpen = false,
   scrollY,
+  solid = false,
 }: HeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   const solidStyle = useAnimatedStyle(() => {
+    if (solid) {
+      return { opacity: 1 };
+    }
     const y = scrollY ? scrollY.value : 0;
     return { opacity: interpolate(y, [SOLID_FROM, HEADER_SOLID_AT], [0, 1], Extrapolation.CLAMP) };
   });

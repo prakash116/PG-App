@@ -43,6 +43,7 @@ export function VisitsScreen() {
   return (
     <Screen>
       <Header
+        solid
         onSearchPress={onSearchPress}
         onWishlistPress={onWishlistPress}
         onNotificationsPress={onNotificationsPress}
