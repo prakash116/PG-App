@@ -26,13 +26,14 @@ import { StateView } from '@/components/common/StateView';
 import { Text } from '@/components/common/Text';
 import { PgCard, PgCardSkeleton } from '@/components/pg/PgCard';
 import { BannerCarousel } from '@/components/home/BannerCarousel';
+import { SharingPicker } from '@/components/home/SharingPicker';
 import { useBanners, usePgSearch } from '@/api/queries';
 import { USE_FIXTURES } from '@/api/config';
 import { fallbackBanners } from '@/lib/banners';
 import { useLocation } from '@/store/location';
 import { canRenderShadows, tierDuration } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
-import type { PgSummary } from '@/api/types';
+import type { PgSummary, RoomType } from '@/api/types';
 import type { RootStackParamList } from '@/app/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -55,14 +56,19 @@ export function DiscoverScreen() {
   const [isHeaderSolid, setHeaderSolid] = useState(false);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [rawQuery, setRawQuery] = useState('');
+  const [roomType, setRoomType] = useState<RoomType | null>(null);
 
   const bannerHeight = insets.top + BANNER_BODY;
 
   // The params object is the cache key, so it has to be stable across renders
   // or every keystroke would start a fresh cache entry.
   const params = useMemo(
-    () => ({ q: rawQuery.trim() || undefined, city: city ?? undefined }),
-    [city, rawQuery],
+    () => ({
+      q: rawQuery.trim() || undefined,
+      city: city ?? undefined,
+      roomType: roomType ?? undefined,
+    }),
+    [city, rawQuery, roomType],
   );
   const { data, isLoading, isRefetching, refetch, error } = usePgSearch(params);
   // Banners are backend content. Until they arrive — or if they never do —
@@ -167,6 +173,9 @@ export function DiscoverScreen() {
           backgroundColor: theme.colors.ground,
         }}
       />
+      <View style={{ paddingHorizontal: gutter, paddingTop: theme.spacing.xs }}>
+        <SharingPicker value={roomType} onChange={setRoomType} />
+      </View>
       {USE_FIXTURES ? (
         <View
           style={[

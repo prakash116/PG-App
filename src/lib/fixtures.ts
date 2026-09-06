@@ -30,6 +30,7 @@ export const fixturePgs: PgSummary[] = [
     verified: true,
     rating: 4.6,
     reviewCount: 132,
+    roomTypes: ['SINGLE', 'DOUBLE', 'TRIPLE'],
   },
   {
     id: 'pg-02',
@@ -48,6 +49,7 @@ export const fixturePgs: PgSummary[] = [
     verified: true,
     rating: 4.8,
     reviewCount: 87,
+    roomTypes: ['SINGLE', 'DOUBLE'],
   },
   {
     id: 'pg-03',
@@ -66,6 +68,7 @@ export const fixturePgs: PgSummary[] = [
     verified: false,
     rating: 4.1,
     reviewCount: 24,
+    roomTypes: ['DOUBLE', 'TRIPLE'],
   },
   {
     id: 'pg-04',
@@ -84,6 +87,7 @@ export const fixturePgs: PgSummary[] = [
     verified: true,
     rating: 4.4,
     reviewCount: 56,
+    roomTypes: ['SINGLE', 'DOUBLE', 'TRIPLE', 'PREMIUM'],
   },
   {
     id: 'pg-05',
@@ -102,6 +106,7 @@ export const fixturePgs: PgSummary[] = [
     verified: true,
     rating: 4.7,
     reviewCount: 203,
+    roomTypes: ['SINGLE', 'PREMIUM'],
   },
   {
     id: 'pg-06',
@@ -120,5 +125,6 @@ export const fixturePgs: PgSummary[] = [
     verified: false,
     rating: 3.9,
     reviewCount: 12,
+    roomTypes: ['TRIPLE'],
   },
 ];

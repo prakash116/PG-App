@@ -24,6 +24,7 @@ function pg(overrides: Partial<PgSummary>): PgSummary {
     verified: true,
     rating: 4,
     reviewCount: 10,
+    roomTypes: ['SINGLE', 'DOUBLE'],
     ...overrides,
   };
 }
@@ -64,6 +65,15 @@ describe('applyFilters', () => {
     expect(applyFilters(list, { gender: 'GIRLS', verifiedOnly: true }).map(p => p.id)).toEqual([
       'both',
     ]);
+  });
+
+  it('keeps only PGs that offer the chosen sharing type', () => {
+    const list = [
+      pg({ id: 'has-triple', roomTypes: ['DOUBLE', 'TRIPLE'] }),
+      pg({ id: 'no-triple', roomTypes: ['SINGLE'] }),
+    ];
+
+    expect(applyFilters(list, { roomType: 'TRIPLE' }).map(p => p.id)).toEqual(['has-triple']);
   });
 
   it('returns everything when nothing is asked for', () => {

@@ -59,6 +59,9 @@ export interface PgSummary {
   verified: boolean;
   rating: number;
   reviewCount: number;
+  /** Sharing types on offer — enough for a card chip and the sharing filter,
+   *  without the per-type pricing the detail carries. */
+  roomTypes: RoomType[];
 }
 
 /** What GET /v1/pg/public/:pgCode returns today. Note it has no `id`: the
@@ -119,4 +122,6 @@ export interface PgSearchParams {
   maxPrice?: number;
   foodIncluded?: boolean;
   verifiedOnly?: boolean;
+  /** Keeps only PGs offering this sharing type. */
+  roomType?: RoomType;
 }

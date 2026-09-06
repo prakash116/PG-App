@@ -39,6 +39,9 @@ export function applyFilters(pgs: PgSummary[], params: PgSearchParams): PgSummar
     if (params.verifiedOnly && !pg.verified) {
       return false;
     }
+    if (params.roomType && !pg.roomTypes.includes(params.roomType)) {
+      return false;
+    }
     // A PG with no starting price cannot satisfy a price filter, so leaving it
     // out is the honest result rather than a surprise inclusion.
     if (params.minPrice !== undefined && (pg.price ?? -1) < params.minPrice) {
