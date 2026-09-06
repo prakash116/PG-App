@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  Extrapolation,
   FadeInDown,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, ChevronDown, Heart, MapPin, Search } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
@@ -22,6 +25,12 @@ interface HeaderProps {
   onNotificationsPress: () => void;
   /** Marks the search control as active while the search field is open. */
   isSearchOpen?: boolean;
+  /**
+   * The screen's vertical scroll offset. When given, the header fades in a
+   * solid background as content scrolls under it, so a banner can run
+   * edge-to-edge at rest and the header still reads over a list further down.
+   */
+  scrollY?: SharedValue<number>;
 }
 
 /** The row itself, excluding the status bar inset. */
@@ -29,6 +38,9 @@ export const HEADER_ROW_HEIGHT = 56;
 const CONTROL_SIZE = 40;
 const LOGO_MARK_SIZE = 26;
 const ROW_PADDING = (HEADER_ROW_HEIGHT - CONTROL_SIZE) / 2;
+/** The background is fully transparent until here, fully solid by HEADER_SOLID_AT. */
+const SOLID_FROM = 40;
+export const HEADER_SOLID_AT = 100;
 
 /**
  * The height content has to clear so it starts below the header, not under it.
@@ -55,9 +67,15 @@ export function Header({
   onWishlistPress,
   onNotificationsPress,
   isSearchOpen = false,
+  scrollY,
 }: HeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+
+  const solidStyle = useAnimatedStyle(() => {
+    const y = scrollY ? scrollY.value : 0;
+    return { opacity: interpolate(y, [SOLID_FROM, HEADER_SOLID_AT], [0, 1], Extrapolation.CLAMP) };
+  });
 
   return (
     <Animated.View
@@ -73,6 +91,16 @@ export function Header({
         },
       ]}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          styles.solid,
+          { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border },
+          solidStyle,
+        ]}
+      />
+
       <View style={[styles.lead, { gap: theme.spacing.sm }]}>
         <LogoWell />
         <LocationPill />
@@ -252,6 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  solid: { borderBottomWidth: StyleSheet.hairlineWidth },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 8, height: CONTROL_SIZE, flexShrink: 1 },
   iconWell: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   pillText: { flexShrink: 1 },

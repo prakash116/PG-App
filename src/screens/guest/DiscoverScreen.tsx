@@ -1,17 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, StyleSheet, TextInput, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { RefreshControl, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import Animated, {
+  FadeInUp,
+  FadeOutUp,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, X } from 'lucide-react-native';
 import { Screen } from '@/components/common/Screen';
-import { Header, useHeaderHeight } from '@/components/common/Header';
+import { HEADER_SOLID_AT, Header, useHeaderHeight } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { Text } from '@/components/common/Text';
 import { PgCard, PgCardSkeleton } from '@/components/pg/PgCard';
+import { BannerCarousel } from '@/components/home/BannerCarousel';
 import { usePgSearch } from '@/api/queries';
 import { USE_FIXTURES } from '@/api/config';
+import { bannerSlides, type BannerSlide } from '@/lib/banners';
 import { useLocation } from '@/store/location';
 import { canRenderShadows, tierDuration } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
@@ -20,14 +30,24 @@ import type { RootStackParamList } from '@/app/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+/** Banner height below the status bar. The total adds the inset back on. */
+const BANNER_BODY = 300;
+
 export function DiscoverScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const navigation = useNavigation<Nav>();
+  const isFocused = useIsFocused();
   const city = useLocation(state => state.city);
 
+  const listRef = useRef<FlashListRef<PgSummary>>(null);
+  const scrollY = useSharedValue(0);
+  const [isHeaderSolid, setHeaderSolid] = useState(false);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [rawQuery, setRawQuery] = useState('');
+
+  const bannerHeight = insets.top + BANNER_BODY;
 
   // The params object is the cache key, so it has to be stable across renders
   // or every keystroke would start a fresh cache entry.
@@ -36,6 +56,25 @@ export function DiscoverScreen() {
     [city, rawQuery],
   );
   const { data, isLoading, isRefetching, refetch, error } = usePgSearch(params);
+
+  const scrollHandler = useAnimatedScrollHandler(event => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  // Status bar icons are light over the banner and flip with the header: a
+  // boolean crossing, not a per-frame value, so JS only hears about the edge.
+  useAnimatedReaction(
+    () => scrollY.value >= HEADER_SOLID_AT,
+    (solid, previous) => {
+      if (solid !== previous) {
+        runOnJS(setHeaderSolid)(solid);
+      }
+    },
+  );
+
+  const scrollToCards = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: bannerHeight - headerHeight, animated: true });
+  }, [bannerHeight, headerHeight]);
 
   const openPg = useCallback(
     (pg: PgSummary) => navigation.navigate('PgDetail', { pgCode: pg.pgCode, name: pg.name }),
@@ -65,25 +104,78 @@ export function DiscoverScreen() {
     });
   }, []);
 
+  const onSlidePress = useCallback(
+    (slide: BannerSlide) => {
+      if (slide.action === 'search') {
+        setSearchOpen(true);
+        return;
+      }
+      scrollToCards();
+    },
+    [scrollToCards],
+  );
+
   // RefreshControl wants a void-returning handler; refetch resolves with the
   // query result, which would otherwise be an overload mismatch.
   const onRefresh = useCallback(() => {
     void refetch();
   }, [refetch]);
 
+  // Cards carry their own gutter: the list container cannot, because the
+  // banner in its header has to run edge to edge.
+  const gutter = theme.spacing.xl;
   const renderItem = useCallback(
     ({ item, index }: { item: PgSummary; index: number }) => (
-      <PgCard pg={item} index={index} onPress={openPg} />
+      <View style={{ paddingHorizontal: gutter }}>
+        <PgCard pg={item} index={index} onPress={openPg} />
+      </View>
     ),
-    [openPg],
+    [gutter, openPg],
   );
 
   const duration = tierDuration(theme.motion.duration.fast);
-  const contentTop = headerHeight + theme.spacing.md;
+
+  const listHeader = (
+    <View>
+      <BannerCarousel
+        slides={bannerSlides}
+        height={bannerHeight}
+        scrollY={scrollY}
+        onSlidePress={onSlidePress}
+      />
+      {USE_FIXTURES ? (
+        <View
+          style={[
+            styles.notice,
+            {
+              backgroundColor: theme.colors.warningSubtle,
+              borderRadius: theme.radii.md,
+              marginHorizontal: gutter,
+              marginTop: theme.spacing.lg,
+              paddingVertical: theme.spacing.sm,
+            },
+          ]}
+        >
+          <Text variant="caption" tone="secondary">
+            Sample listings — the catalogue endpoint is not built yet.
+          </Text>
+        </View>
+      ) : null}
+      <View style={{ height: theme.spacing.lg }} />
+    </View>
+  );
 
   return (
     <Screen topInset={false}>
+      {isFocused ? (
+        <StatusBar
+          animated
+          barStyle={isHeaderSolid && !theme.isDark ? 'dark-content' : 'light-content'}
+        />
+      ) : null}
+
       <Header
+        scrollY={scrollY}
         isSearchOpen={isSearchOpen}
         onSearchPress={onSearchPress}
         onWishlistPress={onWishlistPress}
@@ -127,53 +219,45 @@ export function DiscoverScreen() {
       ) : null}
 
       {isLoading ? (
-        <View style={{ paddingHorizontal: theme.spacing.xl, paddingTop: contentTop }}>
-          <PgCardSkeleton />
-          <PgCardSkeleton />
+        <View>
+          {listHeader}
+          <View style={{ paddingHorizontal: gutter }}>
+            <PgCardSkeleton />
+            <PgCardSkeleton />
+          </View>
         </View>
       ) : error ? (
-        <StateView
-          tone="error"
-          title="Could not load PGs"
-          description={error instanceof Error ? error.message : 'Something went wrong.'}
-          actionLabel="Try again"
-          onAction={onRefresh}
-        />
+        <View style={styles.grow}>
+          {listHeader}
+          <StateView
+            tone="error"
+            title="Could not load PGs"
+            description={error instanceof Error ? error.message : 'Something went wrong.'}
+            actionLabel="Try again"
+            onAction={onRefresh}
+          />
+        </View>
       ) : (
         <FlashList
+          ref={listRef}
           data={data ?? []}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: theme.spacing.xl, paddingTop: contentTop }}
+          renderScrollComponent={Animated.ScrollView}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={onRefresh}
-              progressViewOffset={headerHeight}
+              progressViewOffset={insets.top + theme.spacing.sm}
               tintColor={theme.colors.accent}
             />
           }
-          ListHeaderComponent={
-            USE_FIXTURES ? (
-              <View
-                style={[
-                  styles.banner,
-                  {
-                    backgroundColor: theme.colors.warningSubtle,
-                    borderRadius: theme.radii.md,
-                    paddingVertical: theme.spacing.sm,
-                    marginBottom: theme.spacing.lg,
-                  },
-                ]}
-              >
-                <Text variant="caption" tone="secondary">
-                  Sample listings — the catalogue endpoint is not built yet.
-                </Text>
-              </View>
-            ) : null
-          }
+          ListHeaderComponent={listHeader}
           ListEmptyComponent={
             <StateView
               title="Nothing matches that"
@@ -202,5 +286,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 2,
   },
   searchInput: { flex: 1, padding: 0 },
-  banner: { alignItems: 'center' },
+  notice: { alignItems: 'center' },
+  grow: { flex: 1 },
 });
