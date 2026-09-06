@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import { StatusBar, View, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RootNavigator } from './navigation/RootNavigator';
+import { CitySheet } from '@/components/common/CitySheet';
 import { ThemeProvider, darkTheme, lightTheme } from '@/theme';
 
 const queryClient = new QueryClient({
@@ -58,7 +59,13 @@ export default function App() {
                 transparent and only its content colour is ours to set. */}
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
             <NavigationContainer theme={navTheme}>
-              <RootNavigator />
+              {/* The sheet is a sibling of the navigator, not a screen: it
+                  overlays whichever screen opened it, tab bar included, and
+                  closes with an animation rather than a route transition. */}
+              <View style={styles.root}>
+                <RootNavigator />
+                <CitySheet />
+              </View>
             </NavigationContainer>
           </QueryClientProvider>
         </ThemeProvider>

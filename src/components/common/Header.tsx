@@ -1,78 +1,102 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { ChevronDown, Search } from 'lucide-react-native';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Bell, ChevronDown, Heart, MapPin, Search } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { Text } from './Text';
-import { HIT_TARGET, useTheme } from '@/theme';
+import { useLocation } from '@/store/location';
+import { canRenderShadows, tierDuration } from '@/lib/device-tier';
+import { useTheme } from '@/theme';
 import logo from '../../assets/logo.png';
 
 interface HeaderProps {
-  /** The city in the middle. Null reads as "everywhere". */
-  city: string | null;
   onSearchPress: () => void;
-  onLocationPress: () => void;
+  onWishlistPress: () => void;
+  onNotificationsPress: () => void;
   /** Marks the search control as active while the search field is open. */
   isSearchOpen?: boolean;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+/** The row itself, excluding the status bar inset. */
+export const HEADER_ROW_HEIGHT = 56;
+const CONTROL_SIZE = 40;
+const LOGO_SIZE = 40;
+const ROW_PADDING = (HEADER_ROW_HEIGHT - CONTROL_SIZE) / 2;
 
 /**
- * The app's one header: search on the left, location in the middle, the brand
- * mark on the right.
- *
- * Every screen uses this and nothing else at the top. Per-screen titles were
- * removed deliberately — repeating "Discover PGs" under a tab already labelled
- * Discover spends the most valuable strip of the screen saying nothing, and
- * makes each screen look subtly different from the last.
+ * The height content has to clear so it starts below the header, not under it.
+ * The header is transparent and floats over whatever the screen puts behind it
+ * — a banner, a map, a plain ground — so nothing pushes content down for it.
  */
-export function Header({ city, onSearchPress, onLocationPress, isSearchOpen = false }: HeaderProps) {
+export function useHeaderHeight(): number {
+  const insets = useSafeAreaInsets();
+  return insets.top + HEADER_ROW_HEIGHT;
+}
+
+/**
+ * The app's one header: location on the left, then search, wishlist and
+ * notifications, and the brand mark on the right.
+ *
+ * It paints no background of its own. Every control sits on its own frosted
+ * pill so it reads over a photo or over the plain ground alike, which is what
+ * lets a banner run edge-to-edge underneath without the header needing to
+ * know about it.
+ */
+export function Header({
+  onSearchPress,
+  onWishlistPress,
+  onNotificationsPress,
+  isSearchOpen = false,
+}: HeaderProps) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View
+    <Animated.View
+      entering={FadeInDown.duration(tierDuration(theme.motion.duration.slow))}
+      pointerEvents="box-none"
       style={[
         styles.root,
         {
+          paddingTop: insets.top + ROW_PADDING,
+          paddingBottom: ROW_PADDING,
           paddingHorizontal: theme.spacing.lg,
-          paddingVertical: theme.spacing.sm,
-          backgroundColor: theme.colors.ground,
+          gap: theme.spacing.sm,
         },
       ]}
     >
-      <IconButton
-        onPress={onSearchPress}
-        accessibilityLabel={isSearchOpen ? 'Close search' : 'Search PGs'}
-        active={isSearchOpen}
-      />
+      <LocationPill />
 
-      <LocationButton city={city} onPress={onLocationPress} />
-
-      <Image
-        source={logo}
-        style={styles.logo}
-        resizeMode="contain"
-        accessibilityRole="image"
-        accessibilityLabel="Pzee"
-      />
-    </View>
+      <View style={styles.cluster}>
+        <GlassButton icon={Search} label="Search PGs" onPress={onSearchPress} active={isSearchOpen} />
+        <GlassButton icon={Heart} label="Saved PGs" onPress={onWishlistPress} />
+        <GlassButton icon={Bell} label="Notifications" onPress={onNotificationsPress} />
+        <Image
+          source={logo}
+          style={[styles.logo, { borderRadius: theme.radii.md }]}
+          resizeMode="cover"
+          accessibilityRole="image"
+          accessibilityLabel="Pzee"
+        />
+      </View>
+    </Animated.View>
   );
 }
 
-function IconButton({
-  onPress,
-  accessibilityLabel,
-  active,
-}: {
-  onPress: () => void;
-  accessibilityLabel: string;
-  active: boolean;
-}) {
+/** Press feedback shared by every control: a small UI-thread scale. */
+function usePressScale() {
   const theme = useTheme();
   const pressed = useSharedValue(0);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - pressed.value * 0.06 }],
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - pressed.value * 0.07 }],
   }));
 
   const onPressIn = useCallback(() => {
@@ -83,79 +107,136 @@ function IconButton({
     pressed.value = withSpring(0, theme.motion.spring.responsive);
   }, [pressed, theme.motion.spring.responsive]);
 
+  return { style, onPressIn, onPressOut };
+}
+
+function useGlass() {
+  const theme = useTheme();
+  return [
+    {
+      backgroundColor: theme.isDark ? 'rgba(30, 24, 21, 0.82)' : 'rgba(255, 255, 255, 0.88)',
+      borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(28, 23, 20, 0.08)',
+      borderWidth: StyleSheet.hairlineWidth * 2,
+    },
+    canRenderShadows ? theme.shadows.card : null,
+  ];
+}
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function GlassButton({
+  icon: Icon,
+  label,
+  onPress,
+  active = false,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onPress: () => void;
+  active?: boolean;
+}) {
+  const theme = useTheme();
+  const glass = useGlass();
+  const press = usePressScale();
+
   return (
     <AnimatedPressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      hitSlop={4}
       style={[
-        styles.iconButton,
-        {
-          backgroundColor: active ? theme.colors.accentSubtle : theme.colors.surface,
-          borderColor: active ? theme.colors.accent : theme.colors.border,
-          borderRadius: theme.radii.pill,
-        },
-        animatedStyle,
+        styles.control,
+        glass,
+        active ? { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent } : null,
+        { borderRadius: theme.radii.pill },
+        press.style,
       ]}
     >
-      <Search size={19} color={active ? theme.colors.accent : theme.colors.textPrimary} />
+      <Icon size={18} color={active ? theme.colors.textOnAccent : theme.colors.textPrimary} />
     </AnimatedPressable>
   );
 }
 
-function LocationButton({ city, onPress }: { city: string | null; onPress: () => void }) {
+function LocationPill() {
   const theme = useTheme();
-  const pressed = useSharedValue(0);
+  const glass = useGlass();
+  const press = usePressScale();
+  const city = useLocation(state => state.city);
+  const isOpen = useLocation(state => state.isPickerOpen);
+  const openPicker = useLocation(state => state.openPicker);
+  const rotation = useSharedValue(0);
 
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: 1 - pressed.value * 0.35 }));
+  // The chevron turns to point at the sheet while it is open, so the pill and
+  // the sheet read as one control rather than two things that happen together.
+  useEffect(() => {
+    rotation.value = withTiming(isOpen ? 180 : 0, {
+      duration: tierDuration(theme.motion.duration.fast),
+    });
+  }, [isOpen, rotation, theme.motion.duration.fast]);
 
-  const onPressIn = useCallback(() => {
-    pressed.value = withSpring(1, theme.motion.spring.responsive);
-  }, [pressed, theme.motion.spring.responsive]);
-
-  const onPressOut = useCallback(() => {
-    pressed.value = withSpring(0, theme.motion.spring.responsive);
-  }, [pressed, theme.motion.spring.responsive]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: rotation.value + 'deg' }],
+  }));
 
   return (
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={'Change city, currently ' + (city ?? 'all cities')}
-      onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      style={[styles.location, animatedStyle]}
+      accessibilityState={{ expanded: isOpen }}
+      onPress={openPicker}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={[
+        styles.pill,
+        glass,
+        { borderRadius: theme.radii.pill, paddingLeft: 5, paddingRight: theme.spacing.md },
+        press.style,
+      ]}
     >
-      <Text variant="overline" tone="muted">
-        Location
-      </Text>
-      <View style={styles.locationRow}>
-        <Text variant="bodyStrong" numberOfLines={1}>
+      <View
+        style={[
+          styles.iconWell,
+          { backgroundColor: theme.colors.accent, borderRadius: theme.radii.pill },
+        ]}
+      >
+        <MapPin size={14} color={theme.colors.textOnAccent} />
+      </View>
+      <View style={styles.pillText}>
+        <Text variant="overline" tone="muted" style={styles.pillEyebrow}>
+          Location
+        </Text>
+        <Text variant="bodyStrong" numberOfLines={1} style={styles.pillCity}>
           {city ?? 'All cities'}
         </Text>
-        <ChevronDown size={15} color={theme.colors.textSecondary} />
       </View>
+      <Animated.View style={chevronStyle}>
+        <ChevronDown size={15} color={theme.colors.textSecondary} />
+      </Animated.View>
     </AnimatedPressable>
   );
 }
 
-const LOGO_SIZE = 38;
-
 const styles = StyleSheet.create({
-  root: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  iconButton: {
-    width: HIT_TARGET,
-    height: HIT_TARGET,
+  root: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth * 2,
+    justifyContent: 'space-between',
   },
-  // Centred by flex rather than by absolute position, so a long city name
-  // pushes into its own space instead of sliding under the logo.
-  location: { flex: 1, alignItems: 'center' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%' },
-  logo: { width: LOGO_SIZE, height: LOGO_SIZE },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 8, height: CONTROL_SIZE, flexShrink: 1 },
+  iconWell: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  pillText: { flexShrink: 1 },
+  pillEyebrow: { fontSize: 9, lineHeight: 11 },
+  pillCity: { fontSize: 14, lineHeight: 17 },
+  cluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  control: { width: CONTROL_SIZE, height: CONTROL_SIZE, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: LOGO_SIZE, height: LOGO_SIZE, marginLeft: 2 },
 });

@@ -5,11 +5,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Text } from '@/components/common/Text';
 import { Button } from '@/components/common/Button';
 import { Screen } from '@/components/common/Screen';
-import { Header } from '@/components/common/Header';
+import { Header, useHeaderHeight } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { useSession } from '@/store/session';
 import { formatDate } from '@/lib/format';
-import { useLocation } from '@/store/location';
 import { useTheme } from '@/theme';
 import type { RootStackParamList } from '@/app/navigation/types';
 
@@ -17,16 +16,24 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function ProfileScreen() {
   const theme = useTheme();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<Nav>();
   const user = useSession(state => state.user);
   const signOut = useSession(state => state.signOut);
 
-  const city = useLocation(state => state.city);
-
   const onSignIn = useCallback(() => navigation.navigate('SignIn'), [navigation]);
-  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
+  // Search belongs to discovery, so the control takes you there rather than
+  // duplicating a filter on a screen that cannot use it.
   const onSearchPress = useCallback(
     () => navigation.navigate('GuestTabs', { screen: 'Discover' }),
+    [navigation],
+  );
+  const onWishlistPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Saved' }),
+    [navigation],
+  );
+  const onNotificationsPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Visits' }),
     [navigation],
   );
   const onSignOut = useCallback(() => {
@@ -37,9 +44,9 @@ export function ProfileScreen() {
     return (
       <Screen>
         <Header
-          city={city}
           onSearchPress={onSearchPress}
-          onLocationPress={onLocationPress}
+          onWishlistPress={onWishlistPress}
+          onNotificationsPress={onNotificationsPress}
         />
         <StateView
           title="You are browsing as a guest"
@@ -56,11 +63,11 @@ export function ProfileScreen() {
   return (
     <Screen>
       <Header
-        city={city}
         onSearchPress={onSearchPress}
-        onLocationPress={onLocationPress}
+        onWishlistPress={onWishlistPress}
+        onNotificationsPress={onNotificationsPress}
       />
-      <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg, paddingTop: headerHeight + theme.spacing.md }}>
         <View>
           <Text variant="overline" tone="muted">
             Signed in

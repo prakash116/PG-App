@@ -4,13 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Text } from '@/components/common/Text';
 import { Screen } from '@/components/common/Screen';
-import { Header } from '@/components/common/Header';
+import { Header, useHeaderHeight } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { Skeleton } from '@/components/common/Skeleton';
 import { useMyVisits } from '@/api/queries';
 import { useSession } from '@/store/session';
 import { VISIT_STATUS_LABEL, formatDate } from '@/lib/format';
-import { useLocation } from '@/store/location';
 import { useTheme } from '@/theme';
 import type { VisitStatus } from '@/api/types';
 import type { RootStackParamList } from '@/app/navigation/types';
@@ -19,15 +18,21 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function VisitsScreen() {
   const theme = useTheme();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<Nav>();
   const isAuthenticated = useSession(state => state.status === 'authenticated');
   const { data, isLoading, error } = useMyVisits(isAuthenticated);
 
-  const city = useLocation(state => state.city);
-
-  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
   // Search belongs to discovery, so the control takes you there rather than
   // duplicating a filter on a screen that cannot use it.
+  const onWishlistPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Saved' }),
+    [navigation],
+  );
+  const onNotificationsPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Visits' }),
+    [navigation],
+  );
   const onSearchPress = useCallback(
     () => navigation.navigate('GuestTabs', { screen: 'Discover' }),
     [navigation],
@@ -38,9 +43,9 @@ export function VisitsScreen() {
   return (
     <Screen>
       <Header
-        city={city}
         onSearchPress={onSearchPress}
-        onLocationPress={onLocationPress}
+        onWishlistPress={onWishlistPress}
+        onNotificationsPress={onNotificationsPress}
       />
 
       {!isAuthenticated ? (
@@ -51,7 +56,7 @@ export function VisitsScreen() {
           onAction={onSignIn}
         />
       ) : isLoading ? (
-        <View style={{ padding: theme.spacing.xl, gap: theme.spacing.md }}>
+        <View style={{ padding: theme.spacing.xl, gap: theme.spacing.md, paddingTop: headerHeight + theme.spacing.md }}>
           <Skeleton height={84} />
           <Skeleton height={84} />
         </View>
@@ -67,7 +72,7 @@ export function VisitsScreen() {
           description="Find a PG you like and ask to see it. Requests show up here."
         />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.md }}>
+        <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.md, paddingTop: headerHeight + theme.spacing.md }}>
           {data.map(visit => (
             <View
               key={visit.id}

@@ -3,12 +3,11 @@ import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '@/components/common/Screen';
-import { Header } from '@/components/common/Header';
+import { Header, useHeaderHeight } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { PgCard } from '@/components/pg/PgCard';
 import { useSaved } from '@/store/saved';
 import { fixturePgs } from '@/lib/fixtures';
-import { useLocation } from '@/store/location';
 import { useTheme } from '@/theme';
 import type { PgSummary } from '@/api/types';
 import type { RootStackParamList } from '@/app/navigation/types';
@@ -17,6 +16,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function SavedScreen() {
   const theme = useTheme();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<Nav>();
   const codes = useSaved(state => state.codes);
 
@@ -27,11 +27,16 @@ export function SavedScreen() {
     [codes],
   );
 
-  const city = useLocation(state => state.city);
-
-  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
   // Search belongs to discovery, so the control takes you there rather than
   // duplicating a filter on a screen that cannot use it.
+  const onWishlistPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Saved' }),
+    [navigation],
+  );
+  const onNotificationsPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Visits' }),
+    [navigation],
+  );
   const onSearchPress = useCallback(
     () => navigation.navigate('GuestTabs', { screen: 'Discover' }),
     [navigation],
@@ -45,9 +50,9 @@ export function SavedScreen() {
   return (
     <Screen>
       <Header
-        city={city}
         onSearchPress={onSearchPress}
-        onLocationPress={onLocationPress}
+        onWishlistPress={onWishlistPress}
+        onNotificationsPress={onNotificationsPress}
       />
 
       {saved.length === 0 ? (
@@ -60,7 +65,7 @@ export function SavedScreen() {
           data={saved}
           renderItem={({ item, index }) => <PgCard pg={item} index={index} onPress={openPg} />}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: theme.spacing.xl }}
+          contentContainerStyle={{ padding: theme.spacing.xl, paddingTop: headerHeight + theme.spacing.md }}
           showsVerticalScrollIndicator={false}
         />
       )}

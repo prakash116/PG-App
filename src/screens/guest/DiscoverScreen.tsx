@@ -4,16 +4,16 @@ import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
-import { Search } from 'lucide-react-native';
+import { Search, X } from 'lucide-react-native';
 import { Screen } from '@/components/common/Screen';
-import { Header } from '@/components/common/Header';
+import { Header, useHeaderHeight } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
+import { Text } from '@/components/common/Text';
 import { PgCard, PgCardSkeleton } from '@/components/pg/PgCard';
 import { usePgSearch } from '@/api/queries';
 import { USE_FIXTURES } from '@/api/config';
-import { Text } from '@/components/common/Text';
 import { useLocation } from '@/store/location';
-import { tierDuration } from '@/lib/device-tier';
+import { canRenderShadows, tierDuration } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
 import type { PgSummary } from '@/api/types';
 import type { RootStackParamList } from '@/app/navigation/types';
@@ -22,6 +22,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function DiscoverScreen() {
   const theme = useTheme();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<Nav>();
   const city = useLocation(state => state.city);
 
@@ -41,7 +42,17 @@ export function DiscoverScreen() {
     [navigation],
   );
 
-  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
+  const onWishlistPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Saved' }),
+    [navigation],
+  );
+
+  // There is no notifications feed yet; visit status changes are the closest
+  // thing, so the bell takes you where those show up.
+  const onNotificationsPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Visits' }),
+    [navigation],
+  );
 
   const onSearchPress = useCallback(() => {
     setSearchOpen(open => {
@@ -68,21 +79,22 @@ export function DiscoverScreen() {
   );
 
   const duration = tierDuration(theme.motion.duration.fast);
+  const contentTop = headerHeight + theme.spacing.md;
 
   return (
-    <Screen>
+    <Screen topInset={false}>
       <Header
-        city={city}
         isSearchOpen={isSearchOpen}
         onSearchPress={onSearchPress}
-        onLocationPress={onLocationPress}
+        onWishlistPress={onWishlistPress}
+        onNotificationsPress={onNotificationsPress}
       />
 
       {isSearchOpen ? (
         <Animated.View
           entering={FadeInUp.duration(duration)}
           exiting={FadeOutUp.duration(duration)}
-          style={{ paddingHorizontal: theme.spacing.xl, paddingBottom: theme.spacing.sm }}
+          style={[styles.searchWrap, { top: headerHeight, paddingHorizontal: theme.spacing.lg }]}
         >
           <View
             style={[
@@ -93,6 +105,7 @@ export function DiscoverScreen() {
                 borderRadius: theme.radii.pill,
                 paddingHorizontal: theme.spacing.lg,
               },
+              canRenderShadows ? theme.shadows.card : null,
             ]}
           >
             <Search size={17} color={theme.colors.textMuted} />
@@ -104,34 +117,17 @@ export function DiscoverScreen() {
               returnKeyType="search"
               autoCorrect={false}
               autoFocus
-              style={[
-                styles.searchInput,
-                { color: theme.colors.textPrimary, ...theme.typography.body },
-              ]}
+              style={[styles.searchInput, { color: theme.colors.textPrimary, ...theme.typography.body }]}
             />
+            {rawQuery ? (
+              <X size={16} color={theme.colors.textMuted} onPress={() => setRawQuery('')} />
+            ) : null}
           </View>
         </Animated.View>
       ) : null}
 
-      {USE_FIXTURES ? (
-        <View
-          style={[
-            styles.banner,
-            {
-              backgroundColor: theme.colors.warningSubtle,
-              paddingVertical: theme.spacing.sm,
-              paddingHorizontal: theme.spacing.xl,
-            },
-          ]}
-        >
-          <Text variant="caption" tone="secondary">
-            Sample listings — the catalogue endpoint is not built yet.
-          </Text>
-        </View>
-      ) : null}
-
       {isLoading ? (
-        <View style={{ paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg }}>
+        <View style={{ paddingHorizontal: theme.spacing.xl, paddingTop: contentTop }}>
           <PgCardSkeleton />
           <PgCardSkeleton />
         </View>
@@ -148,15 +144,35 @@ export function DiscoverScreen() {
           data={data ?? []}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: theme.spacing.xl }}
+          contentContainerStyle={{ padding: theme.spacing.xl, paddingTop: contentTop }}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={onRefresh}
+              progressViewOffset={headerHeight}
               tintColor={theme.colors.accent}
             />
+          }
+          ListHeaderComponent={
+            USE_FIXTURES ? (
+              <View
+                style={[
+                  styles.banner,
+                  {
+                    backgroundColor: theme.colors.warningSubtle,
+                    borderRadius: theme.radii.md,
+                    paddingVertical: theme.spacing.sm,
+                    marginBottom: theme.spacing.lg,
+                  },
+                ]}
+              >
+                <Text variant="caption" tone="secondary">
+                  Sample listings — the catalogue endpoint is not built yet.
+                </Text>
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             <StateView
@@ -175,6 +191,9 @@ export function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Floats under the header rather than pushing the list down, so opening
+  // search never causes the content to jump.
+  searchWrap: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

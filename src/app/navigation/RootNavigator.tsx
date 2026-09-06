@@ -6,7 +6,6 @@ import { OwnerTabs } from './OwnerTabs';
 import { PgDetailScreen } from '@/screens/PgDetailScreen';
 import { SignInScreen } from '@/screens/auth/SignInScreen';
 import { AdminNoticeScreen } from '@/screens/AdminNoticeScreen';
-import { CityPickerScreen } from '@/screens/CityPickerScreen';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
 import type { RootStackParamList } from './types';
@@ -53,11 +52,6 @@ export function RootNavigator() {
         name="PgDetail"
         component={PgDetailScreen}
         options={{ headerShown: true, headerTitle: '', headerTransparent: true }}
-      />
-      <Stack.Screen
-        name="CityPicker"
-        component={CityPickerScreen}
-        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
         name="SignIn"
