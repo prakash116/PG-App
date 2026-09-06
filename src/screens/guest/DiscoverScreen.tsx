@@ -28,7 +28,7 @@ import { PgCard, PgCardSkeleton } from '@/components/pg/PgCard';
 import { BannerCarousel } from '@/components/home/BannerCarousel';
 import { usePgSearch } from '@/api/queries';
 import { USE_FIXTURES } from '@/api/config';
-import { bannerSlides, type BannerSlide } from '@/lib/banners';
+import { bannerSlides } from '@/lib/banners';
 import { useLocation } from '@/store/location';
 import { canRenderShadows, tierDuration } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
@@ -37,8 +37,10 @@ import type { RootStackParamList } from '@/app/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-/** Banner height below the status bar. The total adds the inset back on. */
-const BANNER_BODY = 300;
+/** Banner height below the status bar. The total adds the inset back on.
+ *  Shorter than a hero with copy would be: it carries no message, so past a
+ *  point more height is just distance between the header and the first card. */
+const BANNER_BODY = 220;
 
 export function DiscoverScreen() {
   const theme = useTheme();
@@ -119,16 +121,8 @@ export function DiscoverScreen() {
     });
   }, []);
 
-  const onSlidePress = useCallback(
-    (slide: BannerSlide) => {
-      if (slide.action === 'search') {
-        setSearchOpen(true);
-        return;
-      }
-      scrollToCards();
-    },
-    [scrollToCards],
-  );
+  // The banner says nothing, so a tap on it means "get me to the listings".
+  const onSlidePress = useCallback(() => scrollToCards(), [scrollToCards]);
 
   // RefreshControl wants a void-returning handler; refetch resolves with the
   // query result, which would otherwise be an overload mismatch.
@@ -157,6 +151,18 @@ export function DiscoverScreen() {
         height={bannerHeight}
         scrollY={scrollY}
         onSlidePress={onSlidePress}
+      />
+      {/* The ground overlaps the banner's bottom edge with rounded corners, so
+          the listings read as a sheet resting on the brand surface rather than
+          a hard seam between two blocks. */}
+      <View
+        style={{
+          height: theme.radii.card,
+          marginTop: -theme.radii.card,
+          borderTopLeftRadius: theme.radii.card,
+          borderTopRightRadius: theme.radii.card,
+          backgroundColor: theme.colors.ground,
+        }}
       />
       {USE_FIXTURES ? (
         <View
