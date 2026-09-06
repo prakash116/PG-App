@@ -1,5 +1,10 @@
 {
   "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    // No baseUrl: TypeScript 6 deprecates it, and `paths` already resolves
+    // relative to this file.
+    "paths": { "@/*": ["./src/*"] }
+  },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["**/node_modules", "**/Pods"]
 }
