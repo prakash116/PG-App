@@ -1,5 +1,13 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { RefreshControl, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import {
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
+  TextInput,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,7 +16,6 @@ import Animated, {
   FadeOutUp,
   runOnJS,
   useAnimatedReaction,
-  useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,9 +64,17 @@ export function DiscoverScreen() {
   );
   const { data, isLoading, isRefetching, refetch, error } = usePgSearch(params);
 
-  const scrollHandler = useAnimatedScrollHandler(event => {
-    scrollY.value = event.contentOffset.y;
-  });
+  // FlashList wraps the onScroll prop in a plain function call before it
+  // reaches the scroll view, so a Reanimated worklet handler cannot go here —
+  // it is not callable from JS and crashes on the first scroll. A plain
+  // handler writing the shared value keeps every animation that reads it
+  // intact; the value crosses to the UI thread once per scroll event.
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.value = event.nativeEvent.contentOffset.y;
+    },
+    [scrollY],
+  );
 
   // Status bar icons are light over the banner and flip with the header: a
   // boolean crossing, not a per-frame value, so JS only hears about the edge.
@@ -243,8 +258,7 @@ export function DiscoverScreen() {
           data={data ?? []}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          renderScrollComponent={Animated.ScrollView}
-          onScroll={scrollHandler}
+          onScroll={onScroll}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
           showsVerticalScrollIndicator={false}
