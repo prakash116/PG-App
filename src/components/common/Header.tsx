@@ -41,8 +41,9 @@ export function useHeaderHeight(): number {
 }
 
 /**
- * The app's one header: location on the left, then search, wishlist and
- * notifications, and the brand mark on the right.
+ * The app's one header: the brand mark and location on the left; wishlist,
+ * notifications and search on the right, search last so the most-used control
+ * sits under the thumb.
  *
  * It paints no background of its own. Every control sits on its own frosted
  * pill so it reads over a photo or over the plain ground alike, which is what
@@ -72,12 +73,7 @@ export function Header({
         },
       ]}
     >
-      <LocationPill />
-
-      <View style={styles.cluster}>
-        <GlassButton icon={Search} label="Search PGs" onPress={onSearchPress} active={isSearchOpen} />
-        <GlassButton icon={Heart} label="Saved PGs" onPress={onWishlistPress} />
-        <GlassButton icon={Bell} label="Notifications" onPress={onNotificationsPress} />
+      <View style={[styles.lead, { gap: theme.spacing.sm }]}>
         <Image
           source={logo}
           style={[styles.logo, { borderRadius: theme.radii.md }]}
@@ -85,6 +81,13 @@ export function Header({
           accessibilityRole="image"
           accessibilityLabel="Pzee"
         />
+        <LocationPill />
+      </View>
+
+      <View style={[styles.cluster, { gap: theme.spacing.sm }]}>
+        <GlassButton icon={Heart} label="Saved PGs" onPress={onWishlistPress} />
+        <GlassButton icon={Bell} label="Notifications" onPress={onNotificationsPress} />
+        <GlassButton icon={Search} label="Search PGs" onPress={onSearchPress} active={isSearchOpen} />
       </View>
     </Animated.View>
   );
@@ -236,7 +239,10 @@ const styles = StyleSheet.create({
   pillText: { flexShrink: 1 },
   pillEyebrow: { fontSize: 9, lineHeight: 11 },
   pillCity: { fontSize: 14, lineHeight: 17 },
-  cluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // The lead shrinks before the action cluster does, so a long city name
+  // truncates inside its pill rather than pushing the buttons off-screen.
+  lead: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  cluster: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   control: { width: CONTROL_SIZE, height: CONTROL_SIZE, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: LOGO_SIZE, height: LOGO_SIZE, marginLeft: 2 },
+  logo: { width: LOGO_SIZE, height: LOGO_SIZE },
 });
