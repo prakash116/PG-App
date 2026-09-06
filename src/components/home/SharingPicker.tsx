@@ -6,10 +6,12 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { BedSingle } from 'lucide-react-native';
+import { Gradient } from '@/components/common/Gradient';
 import { canRenderShadows, tierDuration } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
 import type { RoomType } from '@/api/types';
@@ -20,7 +22,7 @@ const OPTIONS: { type: RoomType; label: string; beds: number }[] = [
   { type: 'TRIPLE', label: 'Triple', beds: 3 },
 ];
 const GAP = 10;
-const TILE_HEIGHT = 76;
+const TILE_HEIGHT = 88;
 
 interface SharingPickerProps {
   value: RoomType | null;
@@ -71,43 +73,55 @@ export function SharingPicker({ value, onChange }: SharingPickerProps) {
   );
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(60).duration(tierDuration(theme.motion.duration.base))}
-      onLayout={onLayout}
-      style={[styles.row, { gap: GAP }]}
-    >
+    <View onLayout={onLayout} style={[styles.row, { gap: GAP }]}>
       {tileWidth > 0 ? (
         <Animated.View
           pointerEvents="none"
           style={[
             styles.slab,
-            { width: tileWidth, backgroundColor: theme.colors.accent, borderRadius: theme.radii.lg },
+            { width: tileWidth, borderRadius: theme.radii.xl },
+            // A saffron glow, not a grey drop shadow: the slab should look lit.
+            canRenderShadows ? { ...styles.glow, shadowColor: theme.colors.accent } : null,
             slabStyle,
           ]}
-        />
+        >
+          <View style={[styles.slabFill, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.xl }]}>
+            <Gradient
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              stops={[
+                { offset: 0, color: '#FFFFFF', opacity: 0.3 },
+                { offset: 0.6, color: '#FFFFFF', opacity: 0 },
+              ]}
+            />
+          </View>
+        </Animated.View>
       ) : null}
 
       {OPTIONS.map((option, index) => (
         <Tile
           key={option.type}
+          index={index}
           label={option.label}
           beds={option.beds}
           active={selectedIndex === index}
           onPress={() => toggle(option.type)}
         />
       ))}
-    </Animated.View>
+    </View>
   );
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function Tile({
+  index,
   label,
   beds,
   active,
   onPress,
 }: {
+  index: number;
   label: string;
   beds: number;
   active: boolean;
@@ -115,13 +129,33 @@ function Tile({
 }) {
   const theme = useTheme();
   const pressed = useSharedValue(0);
+  const bounce = useSharedValue(1);
   const progress = useDerivedValue(() => withSpring(active ? 1 : 0, theme.motion.spring.responsive));
+
+  // The beds hop when a tile is chosen: a tap has to feel like it landed on
+  // something, not just recoloured it.
+  useEffect(() => {
+    if (active) {
+      bounce.value = withSequence(
+        withSpring(1.18, { damping: 9, stiffness: 320 }),
+        withSpring(1, theme.motion.spring.responsive),
+      );
+    }
+  }, [active, bounce, theme.motion.spring.responsive]);
 
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: 1 - pressed.value * 0.04 }],
   }));
   // The tile's own surface fades out as the slab arrives underneath it.
   const surfaceStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  const wellStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      [theme.colors.accentSubtle, 'rgba(255, 255, 255, 0.26)'],
+    ),
+    transform: [{ scale: bounce.value }],
+  }));
   const labelStyle = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [theme.colors.textPrimary, theme.colors.textOnAccent]),
   }));
@@ -131,8 +165,14 @@ function Tile({
   const iconsOnStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
   const iconsOffStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
 
+  const icons = (color: string) =>
+    Array.from({ length: beds }, (_, i) => (
+      <BedSingle key={i} size={20} strokeWidth={2.25} color={color} style={i > 0 ? styles.bedOverlap : null} />
+    ));
+
   return (
     <AnimatedPressable
+      entering={FadeInDown.delay(index * theme.motion.stagger).duration(tierDuration(theme.motion.duration.base))}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label + ' sharing'}
@@ -143,29 +183,23 @@ function Tile({
       onPressOut={() => {
         pressed.value = withSpring(0, theme.motion.spring.responsive);
       }}
-      style={[styles.tile, { borderRadius: theme.radii.lg }, pressStyle]}
+      style={[styles.tile, { borderRadius: theme.radii.xl }, pressStyle]}
     >
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
           styles.surface,
-          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.lg },
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.xl },
           canRenderShadows ? theme.shadows.card : null,
           surfaceStyle,
         ]}
       />
-      <View style={styles.beds}>
-        <Animated.View style={[styles.bedsLayer, iconsOffStyle]}>
-          {Array.from({ length: beds }, (_, i) => (
-            <BedSingle key={i} size={18} color={theme.colors.accent} style={i > 0 ? styles.bedOverlap : null} />
-          ))}
-        </Animated.View>
+      <Animated.View style={[styles.well, { borderRadius: theme.radii.pill }, wellStyle]}>
+        <Animated.View style={[styles.bedsLayer, iconsOffStyle]}>{icons(theme.colors.accent)}</Animated.View>
         <Animated.View style={[styles.bedsLayer, styles.bedsOn, iconsOnStyle]}>
-          {Array.from({ length: beds }, (_, i) => (
-            <BedSingle key={i} size={18} color={theme.colors.textOnAccent} style={i > 0 ? styles.bedOverlap : null} />
-          ))}
+          {icons(theme.colors.textOnAccent)}
         </Animated.View>
-      </View>
+      </Animated.View>
       <Animated.Text style={[theme.typography.bodyStrong, labelStyle]}>{label}</Animated.Text>
       <Animated.Text style={[theme.typography.caption, captionStyle]}>sharing</Animated.Text>
     </AnimatedPressable>
@@ -175,10 +209,19 @@ function Tile({
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'stretch' },
   slab: { position: 'absolute', left: 0, top: 0, bottom: 0 },
-  tile: { flex: 1, height: TILE_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  glow: { shadowOpacity: 0.38, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  slabFill: { flex: 1, overflow: 'hidden' },
+  tile: { flex: 1, height: TILE_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 1 },
   surface: { borderWidth: StyleSheet.hairlineWidth * 2 },
-  beds: { height: 20, justifyContent: 'center', marginBottom: 2 },
+  well: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 34,
+    paddingHorizontal: 11,
+    marginBottom: 6,
+  },
   bedsLayer: { flexDirection: 'row', alignItems: 'center' },
-  bedsOn: { position: 'absolute', left: 0, right: 0, justifyContent: 'center' },
+  bedsOn: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center' },
   bedOverlap: { marginLeft: -5 },
 });

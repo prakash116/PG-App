@@ -173,7 +173,7 @@ export function DiscoverScreen() {
           backgroundColor: theme.colors.ground,
         }}
       />
-      <View style={{ paddingHorizontal: gutter, paddingTop: theme.spacing.xs }}>
+      <View style={{ paddingHorizontal: gutter, paddingTop: theme.spacing.md, paddingBottom: theme.spacing.xs }}>
         <SharingPicker value={roomType} onChange={setRoomType} />
       </View>
       {USE_FIXTURES ? (
