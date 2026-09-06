@@ -77,7 +77,10 @@ export function Header({
         <Image
           source={logo}
           style={[styles.logo, { borderRadius: theme.radii.md }]}
-          resizeMode="cover"
+          // The asset is cropped square with equal margins (the original had
+          // twice the padding below the mark as above, which sat it visibly
+          // high next to the pill), so contain and cover now agree.
+          resizeMode="contain"
           accessibilityRole="image"
           accessibilityLabel="Pzee"
         />
