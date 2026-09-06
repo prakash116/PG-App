@@ -27,7 +27,7 @@ interface HeaderProps {
 /** The row itself, excluding the status bar inset. */
 export const HEADER_ROW_HEIGHT = 56;
 const CONTROL_SIZE = 40;
-const LOGO_SIZE = 40;
+const LOGO_MARK_SIZE = 26;
 const ROW_PADDING = (HEADER_ROW_HEIGHT - CONTROL_SIZE) / 2;
 
 /**
@@ -74,16 +74,7 @@ export function Header({
       ]}
     >
       <View style={[styles.lead, { gap: theme.spacing.sm }]}>
-        <Image
-          source={logo}
-          style={[styles.logo, { borderRadius: theme.radii.md }]}
-          // The asset is cropped square with equal margins (the original had
-          // twice the padding below the mark as above, which sat it visibly
-          // high next to the pill), so contain and cover now agree.
-          resizeMode="contain"
-          accessibilityRole="image"
-          accessibilityLabel="Pzee"
-        />
+        <LogoWell />
         <LocationPill />
       </View>
 
@@ -167,6 +158,30 @@ function GlassButton({
   );
 }
 
+/**
+ * The brand mark on the same 40pt frosted disc as the action buttons, sized
+ * like an icon inside it. Shown bare, the mark filled its box edge to edge and
+ * read as a different kind of object from everything beside it.
+ *
+ * The disc stays white in both schemes: the mark has black letters, which
+ * would vanish on the dark glass, and a brand mark keeping its own ground is
+ * how app icons behave anyway.
+ */
+function LogoWell() {
+  const theme = useTheme();
+  const glass = useGlass();
+
+  return (
+    <View
+      accessibilityRole="image"
+      accessibilityLabel="Pzee"
+      style={[styles.control, glass, styles.logoWell, { borderRadius: theme.radii.pill }]}
+    >
+      <Image source={logo} style={styles.logo} resizeMode="contain" />
+    </View>
+  );
+}
+
 function LocationPill() {
   const theme = useTheme();
   const glass = useGlass();
@@ -247,5 +262,6 @@ const styles = StyleSheet.create({
   lead: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
   cluster: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   control: { width: CONTROL_SIZE, height: CONTROL_SIZE, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: LOGO_SIZE, height: LOGO_SIZE },
+  logoWell: { backgroundColor: '#FFFFFF' },
+  logo: { width: LOGO_MARK_SIZE, height: LOGO_MARK_SIZE },
 });
