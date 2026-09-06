@@ -9,10 +9,11 @@ import Animated, {
   withSequence,
   withSpring,
 } from 'react-native-reanimated';
+import { Gradient } from '@/components/common/Gradient';
 import { canRenderShadows } from '@/lib/device-tier';
 import { useTheme } from '@/theme';
 
-const BAR_HEIGHT = 64;
+const BAR_HEIGHT = 68;
 const PILL_HEIGHT = 44;
 /** Horizontal breathing room between the pill and its tab's edges. */
 const PILL_INSET = 8;
@@ -78,7 +79,7 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
             borderColor: theme.colors.border,
             borderRadius: theme.radii.pill,
           },
-          canRenderShadows ? theme.shadows.card : null,
+          canRenderShadows ? styles.float : null,
         ]}
       >
         {/* Measured separately from the bar so the border is not counted. */}
@@ -88,11 +89,24 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
               pointerEvents="none"
               style={[
                 styles.pill,
-                { width: activeWidth - PILL_INSET * 2, backgroundColor: theme.colors.accent },
+                { width: activeWidth - PILL_INSET * 2 },
                 canRenderShadows ? { ...styles.glow, shadowColor: theme.colors.accent } : null,
                 pillStyle,
               ]}
-            />
+            >
+              {/* Lit, not painted: the same top-left highlight as the sharing
+                  picker's slab, so the two selections read as one material. */}
+              <View style={[styles.pillFill, { backgroundColor: theme.colors.accent }]}>
+                <Gradient
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  stops={[
+                    { offset: 0, color: '#FFFFFF', opacity: 0.28 },
+                    { offset: 0.6, color: '#FFFFFF', opacity: 0 },
+                  ]}
+                />
+              </View>
+            </Animated.View>
           ) : null}
 
           {state.routes.map((route, index) => {
@@ -160,6 +174,20 @@ function Tab({
   const measured = inactiveWidth > 0;
   const pressed = useSharedValue(0);
   const progress = useDerivedValue(() => withSpring(focused ? 1 : 0, theme.motion.spring.responsive));
+  const hop = useSharedValue(1);
+
+  // The icon hops once as its tab is chosen: the tap has to feel like it
+  // landed on something, not just slid a pill under it.
+  useEffect(() => {
+    if (focused) {
+      hop.value = withSequence(
+        withSpring(1.2, { damping: 9, stiffness: 320 }),
+        withSpring(1, theme.motion.spring.responsive),
+      );
+    }
+  }, [focused, hop, theme.motion.spring.responsive]);
+
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: hop.value }] }));
 
   // The tab widens as it is chosen, so the pill has somewhere to be.
   const tabStyle = useAnimatedStyle(() => ({
@@ -192,12 +220,12 @@ function Tab({
       style={[styles.tab, measured ? null : styles.flex, tabStyle]}
     >
       <View style={styles.content}>
-        <View style={styles.icon}>
+        <Animated.View style={[styles.icon, iconStyle]}>
           <Animated.View style={offStyle}>{renderIcon(theme.colors.textMuted)}</Animated.View>
           <Animated.View style={[StyleSheet.absoluteFill, styles.center, onStyle]}>
             {renderIcon(theme.colors.textOnAccent)}
           </Animated.View>
-        </View>
+        </Animated.View>
         <Animated.View style={[styles.labelWrap, labelStyle]}>
           <Animated.Text
             numberOfLines={1}
@@ -212,7 +240,14 @@ function Tab({
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingTop: 8 },
+  wrap: { paddingTop: 10 },
+  float: {
+    shadowColor: '#3A2A18',
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
   bar: { height: BAR_HEIGHT, borderWidth: StyleSheet.hairlineWidth * 2, justifyContent: 'center' },
   row: { flex: 1, flexDirection: 'row', alignItems: 'stretch' },
   pill: {
@@ -222,6 +257,7 @@ const styles = StyleSheet.create({
     height: PILL_HEIGHT,
     borderRadius: PILL_HEIGHT / 2,
   },
+  pillFill: { flex: 1, borderRadius: PILL_HEIGHT / 2, overflow: 'hidden' },
   glow: { shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   tab: { alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1 },
@@ -229,5 +265,5 @@ const styles = StyleSheet.create({
   icon: { width: ICON_SIZE + 4, height: ICON_SIZE + 4, alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
   labelWrap: { overflow: 'hidden' },
-  label: { fontWeight: '700', fontSize: 12, lineHeight: 16 },
+  label: { fontWeight: '700', fontSize: 12, lineHeight: 16, letterSpacing: 0.2 },
 });
