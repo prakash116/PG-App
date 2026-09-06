@@ -1,22 +1,11 @@
-import { StyleSheet } from 'react-native';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
-import { useTheme } from '@/theme';
 
-/** Shared, so the two shells cannot drift into looking like different apps. */
+/**
+ * Shared by both shells. The bar itself is custom (see TabBar.tsx), so the
+ * only things left to set here are the ones it reads back from the options.
+ */
 export function useTabScreenOptions(): BottomTabNavigationOptions {
-  const theme = useTheme();
-
   return {
     headerShown: false,
-    tabBarActiveTintColor: theme.colors.accent,
-    tabBarInactiveTintColor: theme.colors.textMuted,
-    tabBarStyle: {
-      backgroundColor: theme.colors.surface,
-      borderTopColor: theme.colors.border,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      height: 62,
-      paddingTop: 6,
-    },
-    tabBarLabelStyle: { ...theme.typography.caption, fontWeight: '600' },
   };
 }

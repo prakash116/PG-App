@@ -5,6 +5,7 @@ import { DiscoverScreen } from '@/screens/guest/DiscoverScreen';
 import { SavedScreen } from '@/screens/guest/SavedScreen';
 import { VisitsScreen } from '@/screens/guest/VisitsScreen';
 import { ProfileScreen } from '@/screens/guest/ProfileScreen';
+import { TabBar } from './TabBar';
 import { useTabScreenOptions } from './tabOptions';
 import type { GuestTabParamList } from './types';
 
@@ -14,7 +15,7 @@ export function GuestTabs() {
   const screenOptions = useTabScreenOptions();
 
   return (
-    <Tab.Navigator screenOptions={screenOptions}>
+    <Tab.Navigator screenOptions={screenOptions} tabBar={props => <TabBar {...props} />}>
       <Tab.Screen
         name="Discover"
         component={DiscoverScreen}

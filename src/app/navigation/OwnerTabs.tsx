@@ -5,6 +5,7 @@ import { InboxScreen } from '@/screens/owner/InboxScreen';
 import { ListingScreen } from '@/screens/owner/ListingScreen';
 import { ResidentsScreen } from '@/screens/owner/ResidentsScreen';
 import { ProfileScreen } from '@/screens/guest/ProfileScreen';
+import { TabBar } from './TabBar';
 import { useTabScreenOptions } from './tabOptions';
 import type { OwnerTabParamList } from './types';
 
@@ -14,7 +15,7 @@ export function OwnerTabs() {
   const screenOptions = useTabScreenOptions();
 
   return (
-    <Tab.Navigator screenOptions={screenOptions}>
+    <Tab.Navigator screenOptions={screenOptions} tabBar={props => <TabBar {...props} />}>
       <Tab.Screen
         name="Inbox"
         component={InboxScreen}
