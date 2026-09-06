@@ -16,4 +16,5 @@ export const prefs = createMMKV({ id: 'pzee.prefs' });
 export const PREF_KEYS = {
   savedPgs: 'saved.pgCodes',
   lastQuery: 'search.lastQuery',
+  city: 'search.city',
 } as const;

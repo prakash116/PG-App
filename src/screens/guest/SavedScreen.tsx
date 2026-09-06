@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Text } from '@/components/common/Text';
 import { Screen } from '@/components/common/Screen';
+import { Header } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { PgCard } from '@/components/pg/PgCard';
 import { useSaved } from '@/store/saved';
 import { fixturePgs } from '@/lib/fixtures';
+import { useLocation } from '@/store/location';
 import { useTheme } from '@/theme';
 import type { PgSummary } from '@/api/types';
 import type { RootStackParamList } from '@/app/navigation/types';
@@ -27,6 +27,16 @@ export function SavedScreen() {
     [codes],
   );
 
+  const city = useLocation(state => state.city);
+
+  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
+  // Search belongs to discovery, so the control takes you there rather than
+  // duplicating a filter on a screen that cannot use it.
+  const onSearchPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Discover' }),
+    [navigation],
+  );
+
   const openPg = useCallback(
     (pg: PgSummary) => navigation.navigate('PgDetail', { pgCode: pg.pgCode, name: pg.name }),
     [navigation],
@@ -34,12 +44,11 @@ export function SavedScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.md }}>
-        <Text variant="overline" tone="muted">
-          Your shortlist
-        </Text>
-        <Text variant="title1">Saved</Text>
-      </View>
+      <Header
+        city={city}
+        onSearchPress={onSearchPress}
+        onLocationPress={onLocationPress}
+      />
 
       {saved.length === 0 ? (
         <StateView

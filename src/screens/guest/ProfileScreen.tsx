@@ -5,9 +5,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Text } from '@/components/common/Text';
 import { Button } from '@/components/common/Button';
 import { Screen } from '@/components/common/Screen';
+import { Header } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { useSession } from '@/store/session';
 import { formatDate } from '@/lib/format';
+import { useLocation } from '@/store/location';
 import { useTheme } from '@/theme';
 import type { RootStackParamList } from '@/app/navigation/types';
 
@@ -19,7 +21,14 @@ export function ProfileScreen() {
   const user = useSession(state => state.user);
   const signOut = useSession(state => state.signOut);
 
+  const city = useLocation(state => state.city);
+
   const onSignIn = useCallback(() => navigation.navigate('SignIn'), [navigation]);
+  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
+  const onSearchPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Discover' }),
+    [navigation],
+  );
   const onSignOut = useCallback(() => {
     void signOut();
   }, [signOut]);
@@ -27,6 +36,11 @@ export function ProfileScreen() {
   if (!user) {
     return (
       <Screen>
+        <Header
+          city={city}
+          onSearchPress={onSearchPress}
+          onLocationPress={onLocationPress}
+        />
         <StateView
           title="You are browsing as a guest"
           description="Sign in to book visits, and to keep your shortlist with your account."
@@ -41,6 +55,11 @@ export function ProfileScreen() {
 
   return (
     <Screen>
+      <Header
+        city={city}
+        onSearchPress={onSearchPress}
+        onLocationPress={onLocationPress}
+      />
       <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <View>
           <Text variant="overline" tone="muted">

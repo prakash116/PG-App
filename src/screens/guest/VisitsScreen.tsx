@@ -4,11 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Text } from '@/components/common/Text';
 import { Screen } from '@/components/common/Screen';
+import { Header } from '@/components/common/Header';
 import { StateView } from '@/components/common/StateView';
 import { Skeleton } from '@/components/common/Skeleton';
 import { useMyVisits } from '@/api/queries';
 import { useSession } from '@/store/session';
 import { VISIT_STATUS_LABEL, formatDate } from '@/lib/format';
+import { useLocation } from '@/store/location';
 import { useTheme } from '@/theme';
 import type { VisitStatus } from '@/api/types';
 import type { RootStackParamList } from '@/app/navigation/types';
@@ -21,16 +23,25 @@ export function VisitsScreen() {
   const isAuthenticated = useSession(state => state.status === 'authenticated');
   const { data, isLoading, error } = useMyVisits(isAuthenticated);
 
+  const city = useLocation(state => state.city);
+
+  const onLocationPress = useCallback(() => navigation.navigate('CityPicker'), [navigation]);
+  // Search belongs to discovery, so the control takes you there rather than
+  // duplicating a filter on a screen that cannot use it.
+  const onSearchPress = useCallback(
+    () => navigation.navigate('GuestTabs', { screen: 'Discover' }),
+    [navigation],
+  );
+
   const onSignIn = useCallback(() => navigation.navigate('SignIn'), [navigation]);
 
   return (
     <Screen>
-      <View style={{ paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.md }}>
-        <Text variant="overline" tone="muted">
-          Your requests
-        </Text>
-        <Text variant="title1">Visits</Text>
-      </View>
+      <Header
+        city={city}
+        onSearchPress={onSearchPress}
+        onLocationPress={onLocationPress}
+      />
 
       {!isAuthenticated ? (
         <StateView

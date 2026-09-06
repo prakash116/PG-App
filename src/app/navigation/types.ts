@@ -21,6 +21,8 @@ export type RootStackParamList = {
   PgDetail: { pgCode: string; name?: string };
   /** Presented as a sheet over whatever triggered the auth gate. */
   SignIn: undefined;
+  /** Modal: pick the city the header shows and discovery filters by. */
+  CityPicker: undefined;
   AdminNotice: undefined;
 };
 
